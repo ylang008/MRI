@@ -58,7 +58,6 @@ __global__ void ComputeQKernel(int numK, int numX,
     expArg = PIx2 * (const_kValues[idx].Kx * x_l +
                      const_kValues[idx].Ky * y_l +
                      const_kValues[idx].Kz * z_l);
-
     phi = const_kValues[idx].PhiMag;
     Qracc += phi * cos(expArg);
     Qiacc += phi * sin(expArg);
@@ -72,7 +71,6 @@ __global__ void ComputeQKernel(int numK, int numX,
                      const_kValues[idx].Kz * z_l);
 
     phi = const_kValues[idx].PhiMag;
-
     Qracc += phi * cos(expArg);
     Qiacc += phi * sin(expArg);
 
@@ -82,7 +80,6 @@ __global__ void ComputeQKernel(int numK, int numX,
                      const_kValues[idx].Kz * z_l);
 
     phi = const_kValues[idx].PhiMag;
-
     Qracc += phi * cos(expArg);
     Qiacc += phi * sin(expArg);
   }
