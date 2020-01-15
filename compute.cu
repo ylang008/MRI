@@ -60,7 +60,6 @@ __global__ void ComputeQKernel(int numK, int numX,
                      const_kValues[idx].Kz * z_l);
 
     phi = const_kValues[idx].PhiMag;
-
     Qracc += phi * cos(expArg);
     Qiacc += phi * sin(expArg);
     idx++;
@@ -87,10 +86,8 @@ __global__ void ComputeQKernel(int numK, int numX,
     Qracc += phi * cos(expArg);
     Qiacc += phi * sin(expArg);
   }
-
   Qr_d[t] += Qracc;
   Qi_d[t] += Qiacc;
-
 }
 
 void ComputePhiMagGPU(int numK, float* phiR_d, float* phiI_d,
