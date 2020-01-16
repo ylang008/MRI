@@ -21,28 +21,46 @@ struct kValues {
   float PhiMag;
 };
 
+/*The algorithm first computes the real and imaginary components of mu 
+at each sample point in the trajectory space (k-space), 
+then computes the real and imaginarycomponents of FHd at each voxel in the image space.*/
+
+
 #if PROJECT_DEF
 #define BLOCK_SIZE 512
 #define K_VALS_GRID_SIZE (BLOCK_SIZE * 4)
 __constant__ __device__ kValues const_kValues[K_VALS_GRID_SIZE];
 
+//calculate mu at each sample point t
 __global__ void ComputePhiMagKernel(int numK, float *phiR, float *phiI,
                                     float *phiMag)
 {
+	
+// find the index of the voxel assigned to this thread
   unsigned int t = threadIdx.x + (blockIdx.x * blockDim.x);
   if (t < numK)
     phiMag[t] = (phiR[t] * phiR[t]) + (phiI[t] * phiI[t]);
 }
+/*The GPU-based implementation of the FHd algorithm uses constant memory caches to eliminate the
+potential bottleneck posed by memory bandwidth and latency. 
 
+The scan data is divided into many tiles, the host CPU loads the corresponding subset of sample points into constant memory 
+before executing the cmpFhD function. 
+
+Each thread computes a partial sum for a single element of FHd by iterating over all the sample points in the tile.
+
+This optimization significantly increases the ratio of FP operations to global memory accesses.*/
+//calculate FHd on one voxel//
 __global__ void ComputeQKernel(int numK, int numX,
                                float *x_d, float *y_d, float *z_d,
                                float *Qr_d, float *Qi_d)
-{
+{ 
+// find the index of the voxel assigned to this thread
   unsigned int t = threadIdx.x + (blockIdx.x * blockDim.x);
 
   if (t >= numX)
     return;
-
+//register allocate voxel inputs and outputs
   float x_l = x_d[t];
   float y_l = y_d[t];
   float z_l = z_d[t];
@@ -52,20 +70,30 @@ __global__ void ComputeQKernel(int numK, int numX,
 
   float expArg;
   int idx = 0;
+	
 
-  if (numK % 2) {
+/**/	
+  if (numK % 2) {	  
     /* if numK is odd */
+	// e^2pi*km*xn  
     expArg = PIx2 * (const_kValues[idx].Kx * x_l +
                      const_kValues[idx].Ky * y_l +
                      const_kValues[idx].Kz * z_l);
     phi = const_kValues[idx].PhiMag;
-    Qracc += phi * cos(expArg);
-    Qiacc += phi * sin(expArg);
+    /*First, Use fath math，failed to use five element taylor */
+    /*Then, change cos() and sin() function to hardware versions: __sin() and __cos(). 
+     Because CUDA offers hardware implementations of mathematic functions that 
+     provide much higher throughput than their software counterparts, but it will 
+     reduced accuracy when switching from software functions to hardware functions.
+     So must carefully.*/  	  
+    Qracc += phi * _cos(expArg);
+    Qiacc += phi * _sin(expArg);
     idx++;
   }
 
   for (; idx < numK; idx++) {
     /* using thread coarsening technique */
+   //const_kValues(sample data)is held in costant memory
     expArg = PIx2 * (const_kValues[idx].Kx * x_l +
                      const_kValues[idx].Ky * y_l +
                      const_kValues[idx].Kz * z_l);
@@ -80,8 +108,9 @@ __global__ void ComputeQKernel(int numK, int numX,
                      const_kValues[idx].Kz * z_l);
 
     phi = const_kValues[idx].PhiMag;
-    Qracc += phi * cos(expArg);
-    Qiacc += phi * sin(expArg);
+   /*hardware versions: __sin() and __cos()*/
+    Qracc += phi * _cos(expArg);
+    Qiacc += phi * _sin(expArg);
   }
   Qr_d[t] += Qracc;
   Qi_d[t] += Qiacc;
