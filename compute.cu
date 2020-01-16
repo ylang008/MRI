@@ -72,7 +72,6 @@ __global__ void ComputeQKernel(int numK, int numX,
   int idx = 0;
 	
 
-/**/	
   if (numK % 2) {	  
     /* if numK is odd */
 	// e^2pi*km*xn  
@@ -80,12 +79,12 @@ __global__ void ComputeQKernel(int numK, int numX,
                      const_kValues[idx].Ky * y_l +
                      const_kValues[idx].Kz * z_l);
     phi = const_kValues[idx].PhiMag;
-    /*First, Use fath math，failed to use five element taylor */
-    /*Then, change cos() and sin() function to hardware versions: __sin() and __cos(). 
+    /*First, instead of fath math, changing cos() and sin() function to hardware versions: __sin() and __cos(). 
      Because CUDA offers hardware implementations of mathematic functions that 
      provide much higher throughput than their software counterparts, but it will 
      reduced accuracy when switching from software functions to hardware functions.
-     So must carefully.*/  	  
+     So must carefully.*/  
+    /*failed to use five element taylor */
     Qracc += phi * _cos(expArg);
     Qiacc += phi * _sin(expArg);
     idx++;
@@ -99,8 +98,8 @@ __global__ void ComputeQKernel(int numK, int numX,
                      const_kValues[idx].Kz * z_l);
 
     phi = const_kValues[idx].PhiMag;
-    Qracc += phi * cos(expArg);
-    Qiacc += phi * sin(expArg);
+    Qracc += phi * _cos(expArg);
+    Qiacc += phi * _sin(expArg);
 
     idx++;
     expArg = PIx2 * (const_kValues[idx].Kx * x_l +
